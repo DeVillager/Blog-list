@@ -6,10 +6,8 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "git:commit": "git add . && git commit --",
-    "git:push": "git push -u origin master",
-    "deploygit": "npm run git:commit && npm run git:push",
-    "deployheroku": "git push heroku master && heroku open",
+    "deploy:git": "git add . && git commit && git push -u origin master",
+    "deploy:heroku": "git push heroku master && heroku open",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
