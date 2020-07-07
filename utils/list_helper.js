@@ -49,7 +49,7 @@ const mostBlogs = (blogs) => {
             blogsAmount = result[key]
         }
     }
-    console.log(author, ' ', blogsAmount)
+    // console.log(author, ' ', blogsAmount)
     const formattedResult =
     {
         author: author,
