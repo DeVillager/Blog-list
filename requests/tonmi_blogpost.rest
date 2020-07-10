@@ -1,0 +1,8 @@
+post http://localhost:3003/api/blogs
+Content-Type: application/json
+Authorization: bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRvbm1pIiwiaWQiOiI1ZjA4Nzg5MGQ4ZGFhYjM1OTA4Yjc5NDciLCJpYXQiOjE1OTQzOTA3MDV9.gIIIz0jvNs27TLjH_MUdI-uIl6kGT-t4cMMuRyJNOD8
+{
+    "title": "tonmiblog",
+    "author": "tonme",
+    "url": "www.tonps.fi"
+}

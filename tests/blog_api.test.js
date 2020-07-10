@@ -4,15 +4,39 @@ const helper = require('./test_helper')
 const app = require('../app')
 const api = supertest(app)
 const Blog = require('../models/blog')
-
+const User = require('../models/user')
+const jwt = require('jsonwebtoken')
+let TOKEN = ''
 
 beforeEach(async () => {
   await Blog.deleteMany({})
+  await User.deleteMany({})
+
+  for (let user of helper.initialUsers) {
+    let userObj = new User(user)
+    await userObj.save()
+  }
 
   for (let blog of helper.initialBlogs) {
-    let blogObject = new Blog(blog)
-    await blogObject.save()
+    let blogObj = new Blog(blog)
+    blogObj.user = await User.findOne({})
+    await blogObj.save()
   }
+
+  const loggingUser = await User.findOne({})
+  console.log('logginguser: ', loggingUser)
+
+  const login = await api
+    .post('/api/login')
+    .send(loggingUser)
+
+  const userForToken = {
+    username: loggingUser.username,
+    id: loggingUser.id,
+  }
+
+  TOKEN = jwt.sign(userForToken, process.env.SECRET)
+  console.log('TOKEN is: ', TOKEN)
 })
 
 
@@ -20,29 +44,38 @@ describe('when initial blogs saved', () => {
   test('blogs are returned as json', async () => {
     await api
       .get('/api/blogs')
+      .set('Authorization', 'bearer 12345')
       .expect(200)
       .expect('Content-Type', /application\/json/)
   })
 
   test('all blogs are returned (4.8)', async () => {
-    const response = await api.get('/api/blogs')
+    const response = await api
+      .get('/api/blogs')
+      .set('Authorization', 'bearer 12345')
     expect(response.body).toHaveLength(helper.initialBlogs.length)
   })
 
   test('verify that blog post has id property (4.9)', async () => {
-    const response = await api.get('/api/blogs')
+    const response = await api
+      .get('/api/blogs')
+      .set('Authorization', 'bearer 12345')
     const firstBlog = response.body[0]
     expect(firstBlog.id).toBeDefined()
   })
 
   test('a specific blog is within the returned blogs', async () => {
-    const response = await api.get('/api/blogs')
+    const response = await api
+      .get('/api/blogs')
+      .set('Authorization', 'bearer 12345')
     const titles = response.body.map(r => r.title)
     expect(titles).toContain('moikkumies kaiken ties')
   })
 
   test('the first blog title is moro', async () => {
-    const response = await api.get('/api/blogs')
+    const response = await api
+      .get('/api/blogs')
+      .set('Authorization', 'bearer 12345')
     // console.log('test response: ', response.body)
     // expect(response.body[0].title).toBe('moro')
     expect(response.body[0].title).toBe('moro')
@@ -55,11 +88,12 @@ describe('when adding new blogs', () => {
       title: 'newBlog',
       author: 'Newman',
       url: "www.newblog.fi",
-      likes: 42
+      likes: 42,
     }
 
     await api
       .post('/api/blogs')
+      .set('Authorization', 'bearer ' + TOKEN)
       .send(newBlog)
       .expect(200)
       .expect('Content-Type', /application\/json/)
@@ -79,6 +113,7 @@ describe('when adding new blogs', () => {
 
     const sentBlog = await api
       .post('/api/blogs')
+      .set('Authorization', 'bearer ' + TOKEN)
       .send(newBlog)
       .expect(200)
 
@@ -93,8 +128,20 @@ describe('when adding new blogs', () => {
 
     await api
       .post('/api/blogs')
+      .set('Authorization', 'bearer ' + TOKEN)
       .send(newBlog)
       .expect(400)
+  })
+
+  test('adding blog fails with error 401 when token is not provided (4.22)', async () => {
+    const newBlog = {
+      author: 'somebody'
+    }
+
+    await api
+      .post('/api/blogs')
+      .send(newBlog)
+      .expect(401)
   })
 })
 
@@ -107,10 +154,12 @@ describe('when viewing specific blog', () => {
 
     const resultBlog = await api
       .get(`/api/blogs/${blogToView.id}`)
+      .set('Authorization', 'bearer ' + TOKEN)
       .expect(200)
       .expect('Content-Type', /application\/json/)
-
-    expect(resultBlog.body).toEqual(blogToView)
+    console.log('resultBlog: ', resultBlog.body)
+    console.log('blogtoview: ', blogToView)
+    expect(JSON.stringify(resultBlog.body)).toEqual(JSON.stringify(blogToView))
   })
 })
 
@@ -126,13 +175,12 @@ describe('when deleting blog (4.13)', () => {
 
     await api
       .delete(`/api/blogs/${blogToDelete.id}`)
+      .set('Authorization', 'bearer ' + TOKEN)
       .expect(204)
 
     const blogsAtEnd = await helper.blogsInDB()
 
-    expect(blogsAtEnd).toHaveLength(
-      helper.initialBlogs.length - 1
-    )
+    expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length - 1)
 
     const titles = blogsAtEnd.map(r => r.title)
     expect(titles).not.toContain(blogToDelete.title)
@@ -144,10 +192,11 @@ describe('when updating blog (4.14)', () => {
     const blogsAtStart = await helper.blogsInDB()
     const blogToUpdate = blogsAtStart[0]
     const newLikes = 123456
-    const newBlog = {...blogToUpdate, likes: newLikes}
+    const newBlog = { ...blogToUpdate, likes: newLikes }
 
     await api
       .put(`/api/blogs/${blogToUpdate.id}`)
+      .set('Authorization', 'bearer ' + TOKEN)
       .send(newBlog)
       .expect(200)
 
@@ -161,10 +210,11 @@ describe('when updating blog (4.14)', () => {
   test('updating object in unassigned path', async () => {
     const blogsAtStart = await helper.blogsInDB()
     const blogToUpdate = blogsAtStart[0]
-    const newBlog = {...blogToUpdate, likes: 100}
+    const newBlog = { ...blogToUpdate, likes: 100 }
 
     await api
       .put(`/api/blogs/unknownPath`)
+      .set('Authorization', 'bearer ' + TOKEN)
       .send(newBlog)
       .expect(400)
   })
