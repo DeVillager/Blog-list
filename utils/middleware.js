@@ -8,14 +8,11 @@ const requestLogger = (request, response, next) => {
   logger.info('---')
   next()
 }
-
+// code that extracts the token
 const tokenExtractor = (request, response, next) => {
-  // code that extracts the token
   const authorization = request.get('authorization')
   if (authorization && authorization.toLowerCase().startsWith('bearer ')) {
     request.token = authorization.substring(7)
-  } else {
-    return response.status(401).json({ error: 'Unauthorized' })
   }
   next()
 }
